@@ -1,39 +1,16 @@
 # @kawaz/storage-client
-Storage client library for Kawaz services integrating with AWS S3.
+
+AWS S3 storage client library for Kawaz services with support for multipart uploads and bucket management.
 
 ## Installation
-
-### From NPM/Artifactory
 
 ```bash
 npm install @kawaz/storage-client
 ```
 
-### Local Development with Symlink
-
-1. Build the library:
-```bash
-cd libraries/storage-client
-npm install
-npm run build
-```
-
-2. Create a symlink in your service's node_modules:
-```bash
-# From your service directory
-npm link ../../../libraries/storage-client
-```
-
-Or globally:
-```bash
-cd libraries/storage-client
-npm link
-
-# Then in your service
-npm link @kawaz/storage-client
-```
-
 ## Usage
+
+### Initialize StorageClient
 
 ```typescript
 import { StorageClient } from '@kawaz/storage-client';
@@ -41,59 +18,77 @@ import { Readable } from 'stream';
 
 const client = new StorageClient({
   region: 'us-east-1',
-  bucket: 'my-bucket',
-  // Optional: for local/custom S3
-  endpoint: 'http://localhost:9000',
-  accessKeyId: 'minioadmin',
-  secretAccessKey: 'minioadmin',
+  credentials: {
+    accessKeyId: 'YOUR_ACCESS_KEY',
+    secretAccessKey: 'YOUR_SECRET_KEY'
+  },
+  partSize: 5 * 1024 * 1024,      // 5MB (optional, default varies)
+  maxConcurrency: 4                // Maximum concurrent parts (optional)
 });
-
-// Upload a file
-await client.uploadFile('path/to/file', Buffer.from('content'));
-
-// Download a file
-const stream = await client.downloadFile('path/to/file');
-
-// Check if file exists
-const exists = await client.fileExists('path/to/file');
-
-// Close connection
-await client.close();
 ```
 
-## Publishing to Artifactory
+### Ensure Bucket Exists
 
-1. Update the version in `package.json`:
-```bash
-npm version patch  # or minor/major
+Checks if a bucket exists, creates it if not.
+
+```typescript
+await client.ensureBucket('my-bucket');
 ```
 
-2. Build the library:
-```bash
-npm run build
+### Upload Objects
+
+Upload files or streams to S3 with optional automatic bucket creation:
+
+```typescript
+const fileStream = fs.createReadStream('path/to/file');
+
+await client.uploadObject('my-bucket', 'path/to/object', fileStream, {
+  ensureBucket: true  // Automatically create bucket if it doesn't exist
+});
 ```
 
-3. Configure your npm credentials for Artifactory:
-```bash
-npm config set registry https://your-artifactory-url/artifactory/api/npm/npm
-npm config set @kawaz:registry https://your-artifactory-url/artifactory/api/npm/npm
-npm login
-```
+The upload progress is logged to console as it progresses.
 
-4. Publish:
-```bash
-npm publish
+### Delete Bucket
+
+Remove an empty bucket:
+
+```typescript
+await client.deleteBucket('my-bucket');
 ```
 
 ## Configuration
 
-The `StorageClient` accepts the following configuration:
+`StorageClientConfig` extends AWS S3ClientConfig with additional options:
 
-- `region` (required): AWS region
-- `bucket` (required): S3 bucket name
-- `endpoint` (optional): Custom S3 endpoint (useful for MinIO or local testing)
-- `accessKeyId` (optional): AWS access key ID
-- `secretAccessKey` (optional): AWS secret access key
+- `region` (required): AWS region (e.g., 'us-east-1')
+- `credentials` (optional): AWS credentials object with `accessKeyId` and `secretAccessKey`
+- `endpoint` (optional): Custom S3-compatible endpoint (e.g., MinIO, LocalStack)
+- `partSize` (optional): Size of each part in multipart uploads (bytes)
+- `maxConcurrency` (optional): Maximum concurrent parts during upload
+
+## Error Handling
+
+The library throws `StorageError` exceptions with operation details:
+
+```typescript
+import { StorageError } from '@kawaz/storage-client';
+
+try {
+  await client.uploadObject('bucket', 'key', stream);
+} catch (error) {
+  if (error instanceof StorageError) {
+    console.error('Storage operation failed:', error.message);
+  }
+}
+```
+
+## Exports
+
+- `StorageClient`: Main client class
+- `StorageClientConfig`: Configuration interface
+- `StorageError`: Error class
+- `UploadObjectOptions`: Upload options interface
 
 ## License
 

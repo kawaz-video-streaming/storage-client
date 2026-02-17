@@ -1,6 +1,6 @@
 {
-  "name": "@kawaz/storage-client",
-  "version": "1.0.0",
+  "name": "@ido_kawaz/storage-client",
+  "version": "1.0.1",
   "description": "Storage client library for Kawaz Plus services",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -12,8 +12,8 @@
     "build:watch": "tsc --watch",
     "build:advanced": "npm run clean:advanced && npm i && tsc",
     "clean": "rimraf dist",
-    "clean:advanced": "rimraf dist && rimraf node_modules && rimraf package-lock.json",
-    "package": "npm run build:advanced && npm pack"
+    "clean:advanced": "rimraf dist node_modules package-lock.json",
+    "package": "npm run build:advanced && npm publish --access public"
   },
   "keywords": [
     "storage",
@@ -30,8 +30,5 @@
     "@types/node": "^25.2.3",
     "rimraf": "^6.0.0",
     "typescript": "^5.9.3"
-  },
-  "publishConfig": {
-    "registry": "https://your-artifactory-url/artifactory/api/npm/npm"
   }
 }

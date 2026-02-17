@@ -1,5 +1,4 @@
 # @kawaz/storage-client
-
 Storage client library for Kawaz services integrating with AWS S3.
 
 ## Installation

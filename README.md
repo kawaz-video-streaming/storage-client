@@ -1,94 +1,96 @@
-# @kawaz/storage-client
+# @ido_kawaz/storage-client
 
-AWS S3 storage client library for Kawaz services with support for multipart uploads and bucket management.
+Storage client library for S3-compatible object storage (AWS S3, MinIO, LocalStack) with multipart upload support.
 
 ## Installation
 
 ```bash
-npm install @kawaz/storage-client
+npm install @ido_kawaz/storage-client
 ```
 
-## Usage
-
-### Initialize StorageClient
+## Quick Start
 
 ```typescript
-import { StorageClient } from '@kawaz/storage-client';
-import { Readable } from 'stream';
+import { StorageClient } from '@ido_kawaz/storage-client';
+import fs from 'node:fs';
 
 const client = new StorageClient({
   region: 'us-east-1',
   credentials: {
-    accessKeyId: 'YOUR_ACCESS_KEY',
-    secretAccessKey: 'YOUR_SECRET_KEY'
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
   },
-  partSize: 5 * 1024 * 1024,      // 5MB (optional, default varies)
-  maxConcurrency: 4                // Maximum concurrent parts (optional)
+  partSize: 5 * 1024 * 1024,
+  maxConcurrency: 4
 });
+
+await client.uploadObject(
+  'my-bucket',
+  'files/report.pdf',
+  fs.createReadStream('./report.pdf'),
+  { ensureBucket: true }
+);
 ```
 
-### Ensure Bucket Exists
+## API
 
-Checks if a bucket exists, creates it if not.
+### `new StorageClient(config)`
 
-```typescript
-await client.ensureBucket('my-bucket');
-```
+Creates a new client.
 
-### Upload Objects
+`StorageClientConfig` extends AWS `S3ClientConfig` and includes:
 
-Upload files or streams to S3 with optional automatic bucket creation:
+- `partSize: number` - multipart upload part size in bytes
+- `maxConcurrency: number` - number of parts uploaded in parallel
 
-```typescript
-const fileStream = fs.createReadStream('path/to/file');
+### `ensureBucket(bucketName: string): Promise<void>`
 
-await client.uploadObject('my-bucket', 'path/to/object', fileStream, {
-  ensureBucket: true  // Automatically create bucket if it doesn't exist
-});
-```
+Checks whether a bucket exists and creates it when it is missing.
 
-The upload progress is logged to console as it progresses.
+### `deleteBucket(bucketName: string): Promise<void>`
 
-### Delete Bucket
+Deletes a bucket. If the bucket does not exist, the operation is treated as successful.
 
-Remove an empty bucket:
+### `uploadObject(bucketName: string, objectKey: string, objectData: Readable, options?: UploadObjectOptions): Promise<void>`
 
-```typescript
-await client.deleteBucket('my-bucket');
-```
+Uploads a stream to object storage using multipart upload.
 
-## Configuration
+- `objectData` must be a Node.js `Readable` stream.
+- Upload progress is logged to the console.
+- If `options?.ensureBucket` is `true`, the bucket is created automatically when missing.
 
-`StorageClientConfig` extends AWS S3ClientConfig with additional options:
+`UploadObjectOptions`:
 
-- `region` (required): AWS region (e.g., 'us-east-1')
-- `credentials` (optional): AWS credentials object with `accessKeyId` and `secretAccessKey`
-- `endpoint` (optional): Custom S3-compatible endpoint (e.g., MinIO, LocalStack)
-- `partSize` (optional): Size of each part in multipart uploads (bytes)
-- `maxConcurrency` (optional): Maximum concurrent parts during upload
+- `ensureBucket: boolean`
 
 ## Error Handling
 
-The library throws `StorageError` exceptions with operation details:
+Storage operations can throw `StorageError` with operation context in the message.
 
 ```typescript
-import { StorageError } from '@kawaz/storage-client';
+import { StorageError } from '@ido_kawaz/storage-client';
 
 try {
-  await client.uploadObject('bucket', 'key', stream);
+  await client.uploadObject('my-bucket', 'files/a.txt', fs.createReadStream('./a.txt'));
 } catch (error) {
   if (error instanceof StorageError) {
-    console.error('Storage operation failed:', error.message);
+    console.error(error.message);
   }
 }
 ```
 
 ## Exports
 
-- `StorageClient`: Main client class
-- `StorageClientConfig`: Configuration interface
-- `StorageError`: Error class
-- `UploadObjectOptions`: Upload options interface
+- `StorageClient`
+- `StorageClientConfig`
+- `StorageError`
+- `UploadObjectOptions`
+
+## Development
+
+```bash
+npm run build
+```
 
 ## License
 

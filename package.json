@@ -11,6 +11,7 @@
     "build": "npm run clean && tsc",
     "build:watch": "tsc --watch",
     "build:advanced": "npm run clean:advanced && npm i && tsc",
+    "test": "npm run build && jest --runInBand",
     "clean": "rimraf dist",
     "clean:advanced": "rimraf dist node_modules package-lock.json",
     "package": "npm run build:advanced && npm publish --access public"
@@ -27,8 +28,11 @@
     "@aws-sdk/lib-storage": "^3.985.0"
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
     "@types/node": "^25.2.3",
+    "jest": "^30.1.3",
     "rimraf": "^6.0.0",
+    "ts-jest": "^29.4.1",
     "typescript": "^5.9.3"
   }
 }

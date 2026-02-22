@@ -90,7 +90,14 @@ try {
 
 ```bash
 npm run build
+npm test
 ```
+
+Useful test scripts:
+
+- `npm test` - run tests once
+- `npm run test:watch` - run tests in watch mode
+- `npm run test:coverage` - run tests with coverage report
 
 ## License
 

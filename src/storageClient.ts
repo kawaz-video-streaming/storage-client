@@ -1,6 +1,7 @@
-import { CreateBucketCommand, DeleteBucketCommand, HeadBucketCommand, S3Client, S3ServiceException } from "@aws-sdk/client-s3";
+import { CreateBucketCommand, DeleteBucketCommand, GetObjectCommand, HeadBucketCommand, S3Client } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import { Readable } from "stream";
+import { isNil } from "ramda";
 import { StorageClientConfig, StorageError, UploadObjectOptions } from "./types";
 
 export class StorageClient {
@@ -9,7 +10,7 @@ export class StorageClient {
         this.client = new S3Client(config);
     }
     ensureBucket = async (bucketName: string) => {
-        await this.client.send(new HeadBucketCommand({ Bucket: bucketName })).catch(async (error: S3ServiceException) => {
+        await this.client.send(new HeadBucketCommand({ Bucket: bucketName })).catch(async (error) => {
             if (error.name === 'NotFound') {
                 await this.client.send(new CreateBucketCommand({ Bucket: bucketName }));
             } else {
@@ -18,7 +19,7 @@ export class StorageClient {
         });
     };
     deleteBucket = async (bucketName: string) => {
-        await this.client.send(new DeleteBucketCommand({ Bucket: bucketName })).catch((error: S3ServiceException) => {
+        await this.client.send(new DeleteBucketCommand({ Bucket: bucketName })).catch((error) => {
             if (error.name !== 'NoSuchBucket') {
                 throw new StorageError("deleteBucket", error, { bucketName });
             }
@@ -41,10 +42,19 @@ export class StorageClient {
             });
             await upload.done();
         } catch (error) {
-            if (error instanceof S3ServiceException) {
-                throw new StorageError("uploadObject", error, { bucketName, objectKey });
+            throw new StorageError("uploadObject", error as Error, { bucketName, objectKey });
+        }
+    }
+
+    downloadObject = async (bucketName: string, objectKey: string): Promise<Readable> => {
+        try {
+            const { Body } = await this.client.send(new GetObjectCommand({ Bucket: bucketName, Key: objectKey }))
+            if (isNil(Body)) {
+                throw new Error("Received empty body");
             }
-            throw error;
+            return Body as Readable;
+        } catch (error) {
+            throw new StorageError("downloadObject", error as Error, { bucketName, objectKey });
         }
     }
 }

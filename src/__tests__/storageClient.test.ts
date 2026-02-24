@@ -1,19 +1,12 @@
 import { Upload } from '@aws-sdk/lib-storage';
 import { Readable } from 'stream';
-import { CreateBucketCommand, DeleteBucketCommand, HeadBucketCommand, S3ServiceException } from '@aws-sdk/client-s3';
+import { CreateBucketCommand, DeleteBucketCommand, GetObjectCommand, HeadBucketCommand } from '@aws-sdk/client-s3';
 import { StorageClient } from '../storageClient';
 import { StorageError } from '../types';
 
 const sendMock = jest.fn<Promise<unknown>, [unknown]>();
 
 jest.mock('@aws-sdk/client-s3', () => {
-    class MockS3ServiceException extends Error {
-        constructor(name: string) {
-            super(name);
-            this.name = name;
-        }
-    }
-
     class MockHeadBucketCommand {
         constructor(public readonly input: unknown) { }
     }
@@ -26,6 +19,10 @@ jest.mock('@aws-sdk/client-s3', () => {
         constructor(public readonly input: unknown) { }
     }
 
+    class MockGetObjectCommand {
+        constructor(public readonly input: unknown) { }
+    }
+
     return {
         S3Client: jest.fn().mockImplementation(() => ({
             send: sendMock
@@ -33,7 +30,7 @@ jest.mock('@aws-sdk/client-s3', () => {
         HeadBucketCommand: MockHeadBucketCommand,
         CreateBucketCommand: MockCreateBucketCommand,
         DeleteBucketCommand: MockDeleteBucketCommand,
-        S3ServiceException: MockS3ServiceException
+        GetObjectCommand: MockGetObjectCommand
     };
 });
 
@@ -139,23 +136,48 @@ describe('StorageClient', () => {
         expect(ensureBucketSpy).toHaveBeenCalledWith('bucket-b');
     });
 
-    it('uploadObject wraps S3ServiceException in StorageError', async () => {
-        const sdkError = new S3ServiceException({
-            name: 'UploadDenied',
-            $fault: 'client',
-            $metadata: {}
-        });
-        uploadDoneMock.mockRejectedValueOnce(sdkError);
+    it('uploadObject wraps upload failures in StorageError', async () => {
+        uploadDoneMock.mockRejectedValueOnce(new Error('UploadDenied'));
         const client = new StorageClient(config);
 
         await expect(client.uploadObject('bucket-c', 'file.txt', Readable.from(['x']))).rejects.toBeInstanceOf(StorageError);
     });
 
-    it('uploadObject rethrows unknown errors', async () => {
+    it('uploadObject includes operation and context in wrapped error message', async () => {
         const error = new Error('unexpected');
         uploadDoneMock.mockRejectedValueOnce(error);
         const client = new StorageClient(config);
 
-        await expect(client.uploadObject('bucket-d', 'file.txt', Readable.from(['x']))).rejects.toBe(error);
+        await expect(client.uploadObject('bucket-d', 'file.txt', Readable.from(['x']))).rejects.toThrow(
+            'Storage error: {"operation":"uploadObject","error":"unexpected","bucketName":"bucket-d","objectKey":"file.txt"}'
+        );
+    });
+
+    it('downloadObject returns readable stream body', async () => {
+        const body = Readable.from(['hello']);
+        sendMock.mockResolvedValueOnce({ Body: body });
+        const client = new StorageClient(config);
+
+        const result = await client.downloadObject('bucket-e', 'file.txt');
+
+        expect(result).toBe(body);
+        expect(sendMock).toHaveBeenCalledTimes(1);
+        expect(sendMock.mock.calls[0][0]).toBeInstanceOf(GetObjectCommand);
+    });
+
+    it('downloadObject wraps get-object failures in StorageError', async () => {
+        sendMock.mockRejectedValueOnce(new Error('NoSuchKey'));
+        const client = new StorageClient(config);
+
+        await expect(client.downloadObject('bucket-f', 'missing.txt')).rejects.toBeInstanceOf(StorageError);
+    });
+
+    it('downloadObject throws StorageError when body is empty', async () => {
+        sendMock.mockResolvedValueOnce({ Body: null });
+        const client = new StorageClient(config);
+
+        await expect(client.downloadObject('bucket-g', 'empty.txt')).rejects.toThrow(
+            'Storage error: {"operation":"downloadObject","error":"Received empty body","bucketName":"bucket-g","objectKey":"empty.txt"}'
+        );
     });
 });

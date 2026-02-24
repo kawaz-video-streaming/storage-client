@@ -63,6 +63,13 @@ Uploads a stream to object storage using multipart upload.
 
 - `ensureBucket: boolean`
 
+### `downloadObject(bucketName: string, objectKey: string): Promise<Readable>`
+
+Downloads an object and returns its body as a Node.js `Readable` stream.
+
+- Throws `StorageError` when the object retrieval fails.
+- Throws `StorageError` when the storage service returns an empty body.
+
 ## Error Handling
 
 Storage operations can throw `StorageError` with operation context in the message.
@@ -96,8 +103,6 @@ npm test
 Useful test scripts:
 
 - `npm test` - run tests once
-- `npm run test:watch` - run tests in watch mode
-- `npm run test:coverage` - run tests with coverage report
 
 ## License
 

@@ -1,6 +1,6 @@
 {
   "name": "@ido_kawaz/storage-client",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Storage client library for Kawaz Plus services",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -25,7 +25,9 @@
   "license": "MIT",
   "dependencies": {
     "@aws-sdk/client-s3": "^3.985.0",
-    "@aws-sdk/lib-storage": "^3.985.0"
+    "@aws-sdk/lib-storage": "^3.985.0",
+    "@types/ramda": "^0.31.1",
+    "ramda": "^0.32.0"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",

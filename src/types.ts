@@ -1,4 +1,4 @@
-import { S3ClientConfig, S3ServiceException } from "@aws-sdk/client-s3";
+import { S3ClientConfig } from "@aws-sdk/client-s3";
 
 export interface StorageClientConfig extends S3ClientConfig {
     partSize: number; // Optional configuration for multipart upload part size
@@ -6,8 +6,8 @@ export interface StorageClientConfig extends S3ClientConfig {
 }
 
 export class StorageError extends Error {
-    constructor(operation: string, error: S3ServiceException, details: {}) {
-        const message = `Storage error: ${JSON.stringify({ operation, error: error.name, ...details })}`;
+    constructor(operation: string, error: Error, details: {}) {
+        const message = `Storage error: ${JSON.stringify({ operation, error: error.message, ...details })}`;
         super(message);
     }
 }

@@ -1,4 +1,4 @@
-import { CreateBucketCommand, DeleteBucketCommand, GetObjectCommand, HeadBucketCommand, S3Client } from "@aws-sdk/client-s3";
+import { CreateBucketCommand, DeleteBucketCommand, GetObjectCommand, HeadBucketCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import { Readable } from "stream";
 import { isNil } from "ramda";
@@ -31,16 +31,20 @@ export class StorageClient {
             await this.ensureBucket(bucketName);
         }
         try {
-            const upload = new Upload({
-                client: this.client,
-                params: { Bucket: bucketName, Key: objectKey, Body: objectData },
-                queueSize: this.config.maxConcurrency,
-                partSize: this.config.partSize
-            })
-            upload.on("httpUploadProgress", (progress) => {
-                console.log(`Upload progress for ${objectKey}: ${progress.loaded! / progress.total! * 100}%`);
-            });
-            await upload.done();
+            if (options?.multipartUpload) {
+                const upload = new Upload({
+                    client: this.client,
+                    params: { Bucket: bucketName, Key: objectKey, Body: objectData },
+                    queueSize: this.config.maxConcurrency,
+                    partSize: this.config.partSize
+                })
+                upload.on("httpUploadProgress", (progress) => {
+                    console.log(`Upload progress for ${objectKey}: ${progress.loaded! / progress.total! * 100}%`);
+                });
+                await upload.done();
+            } else {
+                await this.client.send(new PutObjectCommand({ Bucket: bucketName, Key: objectKey, Body: objectData }));
+            }
         } catch (error) {
             throw new StorageError("uploadObject", error as Error, { bucketName, objectKey });
         }

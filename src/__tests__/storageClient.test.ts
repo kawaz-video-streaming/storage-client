@@ -1,6 +1,6 @@
 import { Upload } from '@aws-sdk/lib-storage';
 import { Readable } from 'stream';
-import { CreateBucketCommand, DeleteBucketCommand, GetObjectCommand, HeadBucketCommand } from '@aws-sdk/client-s3';
+import { CreateBucketCommand, DeleteBucketCommand, GetObjectCommand, HeadBucketCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { StorageClient } from '../storageClient';
 import { StorageError } from '../types';
 
@@ -23,6 +23,10 @@ jest.mock('@aws-sdk/client-s3', () => {
         constructor(public readonly input: unknown) { }
     }
 
+    class MockPutObjectCommand {
+        constructor(public readonly input: unknown) { }
+    }
+
     return {
         S3Client: jest.fn().mockImplementation(() => ({
             send: sendMock
@@ -30,7 +34,8 @@ jest.mock('@aws-sdk/client-s3', () => {
         HeadBucketCommand: MockHeadBucketCommand,
         CreateBucketCommand: MockCreateBucketCommand,
         DeleteBucketCommand: MockDeleteBucketCommand,
-        GetObjectCommand: MockGetObjectCommand
+        GetObjectCommand: MockGetObjectCommand,
+        PutObjectCommand: MockPutObjectCommand
     };
 });
 
@@ -104,12 +109,24 @@ describe('StorageClient', () => {
         await expect(client.deleteBucket('restricted')).rejects.toBeInstanceOf(StorageError);
     });
 
-    it('uploadObject runs Upload with config and object params', async () => {
-        uploadDoneMock.mockResolvedValueOnce();
+    it('uploadObject uses PutObject by default', async () => {
+        sendMock.mockResolvedValueOnce({});
         const client = new StorageClient(config);
         const objectData = Readable.from(['hello']);
 
         await client.uploadObject('bucket-a', 'path/file.txt', objectData);
+
+        expect(sendMock).toHaveBeenCalledTimes(1);
+        expect(sendMock.mock.calls[0][0]).toBeInstanceOf(PutObjectCommand);
+        expect(Upload).not.toHaveBeenCalled();
+    });
+
+    it('uploadObject runs Upload with config and object params when multipart enabled', async () => {
+        uploadDoneMock.mockResolvedValueOnce();
+        const client = new StorageClient(config);
+        const objectData = Readable.from(['hello']);
+
+        await client.uploadObject('bucket-a', 'path/file.txt', objectData, { multipartUpload: true });
 
         expect(Upload).toHaveBeenCalledTimes(1);
         expect(Upload).toHaveBeenCalledWith(
@@ -140,7 +157,7 @@ describe('StorageClient', () => {
         uploadDoneMock.mockRejectedValueOnce(new Error('UploadDenied'));
         const client = new StorageClient(config);
 
-        await expect(client.uploadObject('bucket-c', 'file.txt', Readable.from(['x']))).rejects.toBeInstanceOf(StorageError);
+        await expect(client.uploadObject('bucket-c', 'file.txt', Readable.from(['x']), { multipartUpload: true })).rejects.toBeInstanceOf(StorageError);
     });
 
     it('uploadObject includes operation and context in wrapped error message', async () => {
@@ -148,7 +165,7 @@ describe('StorageClient', () => {
         uploadDoneMock.mockRejectedValueOnce(error);
         const client = new StorageClient(config);
 
-        await expect(client.uploadObject('bucket-d', 'file.txt', Readable.from(['x']))).rejects.toThrow(
+        await expect(client.uploadObject('bucket-d', 'file.txt', Readable.from(['x']), { multipartUpload: true })).rejects.toThrow(
             'Storage error: {"operation":"uploadObject","error":"unexpected","bucketName":"bucket-d","objectKey":"file.txt"}'
         );
     });

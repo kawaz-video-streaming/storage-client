@@ -13,5 +13,6 @@ export class StorageError extends Error {
 }
 
 export interface UploadObjectOptions {
-    ensureBucket: boolean;
+    ensureBucket?: boolean;
+    multipartUpload?: boolean; // Optional flag to indicate if multipart upload should be used
 }

@@ -53,15 +53,18 @@ Deletes a bucket. If the bucket does not exist, the operation is treated as succ
 
 ### `uploadObject(bucketName: string, objectKey: string, objectData: Readable, options?: UploadObjectOptions): Promise<void>`
 
-Uploads a stream to object storage using multipart upload.
+Uploads a stream to object storage.
 
 - `objectData` must be a Node.js `Readable` stream.
-- Upload progress is logged to the console.
+- By default, uses a regular `PutObject` request.
+- When multipart upload is enabled, upload progress is logged to the console.
 - If `options?.ensureBucket` is `true`, the bucket is created automatically when missing.
+- If `options?.multipartUpload` is `true`, upload is performed using multipart upload.
 
 `UploadObjectOptions`:
 
 - `ensureBucket: boolean`
+- `multipartUpload: boolean`
 
 ### `downloadObject(bucketName: string, objectKey: string): Promise<Readable>`
 

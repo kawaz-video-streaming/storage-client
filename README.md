@@ -34,6 +34,19 @@ await client.uploadObject(
 
 ## API
 
+### `createStorageClientConfig(): StorageClientConfig`
+
+Builds a validated `StorageClientConfig` from environment variables using Joi.
+
+Supported environment variables:
+
+- `AWS_ENDPOINT` (required) - S3 endpoint URL
+- `AWS_REGION` (optional, default `us-east-1`)
+- `AWS_ACCESS_KEY_ID` (required)
+- `AWS_SECRET_ACCESS_KEY` (required)
+- `AWS_PART_SIZE` (optional, default `5242880`)
+- `AWS_MAX_CONCURRENCY` (optional, default `4`)
+
 ### `new StorageClient(config)`
 
 Creates a new client.
@@ -92,6 +105,7 @@ try {
 ## Exports
 
 - `StorageClient`
+- `createStorageClientConfig`
 - `StorageClientConfig`
 - `StorageError`
 - `UploadObjectOptions`

@@ -2,7 +2,8 @@ import { CreateBucketCommand, DeleteBucketCommand, GetObjectCommand, HeadBucketC
 import { Upload } from "@aws-sdk/lib-storage";
 import { Readable } from "stream";
 import { isNil } from "ramda";
-import { StorageClientConfig, StorageError, UploadObjectOptions } from "./types";
+import { StorageError, UploadObjectOptions } from "./types";
+import { StorageClientConfig } from "./config";
 
 export class StorageClient {
     private client: S3Client;

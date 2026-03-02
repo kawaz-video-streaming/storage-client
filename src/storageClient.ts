@@ -3,11 +3,11 @@ import { Upload } from "@aws-sdk/lib-storage";
 import { Readable } from "stream";
 import { isNil } from "ramda";
 import { StorageError, UploadObjectOptions } from "./types";
-import { StorageClientConfig } from "./config";
+import { StorageConfig } from "./config";
 
 export class StorageClient {
     private client: S3Client;
-    constructor(private readonly config: StorageClientConfig) {
+    constructor(private readonly config: StorageConfig) {
         this.client = new S3Client(config);
     }
     ensureBucket = async (bucketName: string) => {

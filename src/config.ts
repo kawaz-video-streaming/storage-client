@@ -1,34 +1,23 @@
 import { S3ClientConfig } from "@aws-sdk/client-s3";
-import Joi from "joi";
+import { z } from "zod";
 
-export interface StorageClientConfig extends S3ClientConfig {
+export interface StorageConfig extends S3ClientConfig {
     partSize: number; // Optional configuration for multipart upload part size
     maxConcurrency: number; // Optional configuration for maximum concurrency in multipart uploads
 }
 
-interface StorageClientEnv {
-    AWS_ENDPOINT: string;
-    AWS_REGION: string;
-    AWS_ACCESS_KEY_ID: string;
-    AWS_SECRET_ACCESS_KEY: string;
-    AWS_PART_SIZE: number;
-    AWS_MAX_CONCURRENCY: number;
-}
+const StorageEnvSchema = z
+    .object({
+        AWS_ENDPOINT: z.string().url(),
+        AWS_REGION: z.string().default("us-east-1"),
+        AWS_ACCESS_KEY_ID: z.string(),
+        AWS_SECRET_ACCESS_KEY: z.string(),
+        AWS_PART_SIZE: z.coerce.number().finite().default(5 * 1024 * 1024),
+        AWS_MAX_CONCURRENCY: z.coerce.number().finite().default(4),
+    })
 
-const StorageClientEnvSchema = Joi.object<StorageClientEnv>({
-    AWS_ENDPOINT: Joi.string().uri().required(),
-    AWS_REGION: Joi.string().default("us-east-1"),
-    AWS_ACCESS_KEY_ID: Joi.string().required(),
-    AWS_SECRET_ACCESS_KEY: Joi.string().required(),
-    AWS_PART_SIZE: Joi.number().default(5 * 1024 * 1024),
-    AWS_MAX_CONCURRENCY: Joi.number().default(4),
-});
-
-export const createStorageClientConfig = (): StorageClientConfig => {
-    const { error, value } = StorageClientEnvSchema.validate(process.env, { allowUnknown: true });
-    if (error) {
-        throw error;
-    }
+export const createStorageConfig = (): StorageConfig => {
+    const value = StorageEnvSchema.parse(process.env);
     return {
         endpoint: value.AWS_ENDPOINT,
         region: value.AWS_REGION,

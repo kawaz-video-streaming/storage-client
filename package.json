@@ -1,6 +1,6 @@
 {
   "name": "@ido_kawaz/storage-client",
-  "version": "3.0.0",
+  "version": "5.0.0",
   "description": "Storage client library for Kawaz Plus services",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -12,9 +12,10 @@
     "build:watch": "tsc --watch",
     "build:advanced": "npm run clean:advanced && npm i && tsc",
     "test": "npm run build && jest --runInBand",
+    "test:advanced": "npm run build:advanced && jest --runInBand",
     "clean": "rimraf dist",
     "clean:advanced": "rimraf dist node_modules package-lock.json",
-    "package": "npm run build:advanced && npm publish --access public"
+    "package": "npm run test:advanced && npm publish --access public"
   },
   "keywords": [
     "storage",
@@ -26,10 +27,9 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.985.0",
     "@aws-sdk/lib-storage": "^3.985.0",
-    "@types/joi": "^17.2.2",
     "@types/ramda": "^0.31.1",
-    "joi": "^18.0.2",
-    "ramda": "^0.32.0"
+    "ramda": "^0.32.0",
+    "zod": "^3.24.2"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",

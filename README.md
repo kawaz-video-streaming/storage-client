@@ -36,7 +36,7 @@ await client.uploadObject(
 
 ### `createStorageClientConfig(): StorageClientConfig`
 
-Builds a validated `StorageClientConfig` from environment variables using Joi.
+Builds a validated `StorageClientConfig` from environment variables using Zod.
 
 Supported environment variables:
 

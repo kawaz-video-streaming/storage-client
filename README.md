@@ -86,6 +86,26 @@ Downloads an object and returns its body as a Node.js `Readable` stream.
 - Throws `StorageError` when the object retrieval fails.
 - Throws `StorageError` when the storage service returns an empty body.
 
+### `getPresignedUrl(bucketName: string, objectKey: string, expiresInSeconds: number): Promise<string>`
+
+Generates a pre-signed URL for temporary read access to an object.
+
+- `expiresInSeconds` — how long the URL remains valid.
+- Throws `StorageError` on signing failure.
+
+### `deleteObject(bucketName: string, objectKey: string): Promise<void>`
+
+Deletes a single object from a bucket.
+
+- Throws `StorageError` on failure.
+
+### `clearPrefix(bucketName: string, prefix: string): Promise<void>`
+
+Deletes all objects whose key starts with the given prefix.
+
+- No-ops when the prefix matches no objects.
+- Throws `StorageError` if listing objects fails.
+
 ## Error Handling
 
 Storage operations can throw `StorageError` with operation context in the message.

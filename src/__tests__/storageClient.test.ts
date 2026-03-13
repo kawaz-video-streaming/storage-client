@@ -1,6 +1,7 @@
 import { Upload } from '@aws-sdk/lib-storage';
 import { Readable } from 'stream';
-import { CreateBucketCommand, DeleteBucketCommand, GetObjectCommand, HeadBucketCommand, PutObjectCommand } from '@aws-sdk/client-s3';
+import { CreateBucketCommand, DeleteBucketCommand, DeleteObjectCommand, GetObjectCommand, HeadBucketCommand, ListObjectsCommand, PutObjectCommand } from '@aws-sdk/client-s3';
+
 import { StorageClient } from '../storageClient';
 import { StorageError } from '../types';
 
@@ -27,6 +28,14 @@ jest.mock('@aws-sdk/client-s3', () => {
         constructor(public readonly input: unknown) { }
     }
 
+    class MockDeleteObjectCommand {
+        constructor(public readonly input: unknown) { }
+    }
+
+    class MockListObjectsCommand {
+        constructor(public readonly input: unknown) { }
+    }
+
     return {
         S3Client: jest.fn().mockImplementation(() => ({
             send: sendMock
@@ -35,12 +44,20 @@ jest.mock('@aws-sdk/client-s3', () => {
         CreateBucketCommand: MockCreateBucketCommand,
         DeleteBucketCommand: MockDeleteBucketCommand,
         GetObjectCommand: MockGetObjectCommand,
-        PutObjectCommand: MockPutObjectCommand
+        PutObjectCommand: MockPutObjectCommand,
+        DeleteObjectCommand: MockDeleteObjectCommand,
+        ListObjectsCommand: MockListObjectsCommand
     };
 });
 
 const uploadOnMock = jest.fn<void, [string, (...args: unknown[]) => void]>();
 const uploadDoneMock = jest.fn<Promise<void>, []>();
+
+const getSignedUrlMock = jest.fn<Promise<string>, [unknown, unknown, unknown]>();
+
+jest.mock('@aws-sdk/s3-request-presigner', () => ({
+    getSignedUrl: (a: unknown, b: unknown, c: unknown) => getSignedUrlMock(a, b, c)
+}));
 
 jest.mock('@aws-sdk/lib-storage', () => ({
     Upload: jest.fn().mockImplementation(() => ({
@@ -61,6 +78,7 @@ describe('StorageClient', () => {
         sendMock.mockReset();
         uploadDoneMock.mockReset();
         uploadOnMock.mockReset();
+        getSignedUrlMock.mockReset();
     });
 
     it('ensureBucket does nothing when bucket exists', async () => {
@@ -196,5 +214,75 @@ describe('StorageClient', () => {
         await expect(client.downloadObject('bucket-g', 'empty.txt')).rejects.toThrow(
             'Storage error: {"operation":"downloadObject","error":"Received empty body","bucketName":"bucket-g","objectKey":"empty.txt"}'
         );
+    });
+
+    it('getPresignedUrl returns signed URL from presigner', async () => {
+        const signedUrl = 'https://s3.example.com/bucket/file.txt?X-Amz-Signature=abc';
+        getSignedUrlMock.mockResolvedValueOnce(signedUrl);
+        const client = new StorageClient(config);
+
+        const result = await client.getPresignedUrl('bucket-h', 'file.txt', 3600);
+
+        expect(result).toBe(signedUrl);
+        expect(getSignedUrlMock).toHaveBeenCalledTimes(1);
+        expect(getSignedUrlMock).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.any(GetObjectCommand),
+            { expiresIn: 3600 }
+        );
+    });
+
+    it('getPresignedUrl wraps presigner failures in StorageError', async () => {
+        getSignedUrlMock.mockRejectedValueOnce(new Error('SigningError'));
+        const client = new StorageClient(config);
+
+        await expect(client.getPresignedUrl('bucket-i', 'file.txt', 3600)).rejects.toBeInstanceOf(StorageError);
+    });
+
+    it('deleteObject sends DeleteObjectCommand', async () => {
+        sendMock.mockResolvedValueOnce({});
+        const client = new StorageClient(config);
+
+        await client.deleteObject('bucket-j', 'file.txt');
+
+        expect(sendMock).toHaveBeenCalledTimes(1);
+        expect(sendMock.mock.calls[0][0]).toBeInstanceOf(DeleteObjectCommand);
+        expect((sendMock.mock.calls[0][0] as { input: { Bucket: string; Key: string } }).input).toMatchObject({ Bucket: 'bucket-j', Key: 'file.txt' });
+    });
+
+    it('deleteObject wraps failures in StorageError', async () => {
+        sendMock.mockRejectedValueOnce(new Error('AccessDenied'));
+        const client = new StorageClient(config);
+
+        await expect(client.deleteObject('bucket-k', 'file.txt')).rejects.toBeInstanceOf(StorageError);
+    });
+
+    it('clearPrefix does nothing when prefix has no objects', async () => {
+        sendMock.mockResolvedValueOnce({ Contents: [] });
+        const client = new StorageClient(config);
+
+        await client.clearPrefix('bucket-l', 'prefix/');
+
+        expect(sendMock).toHaveBeenCalledTimes(1);
+        expect(sendMock.mock.calls[0][0]).toBeInstanceOf(ListObjectsCommand);
+    });
+
+    it('clearPrefix deletes all objects under the prefix', async () => {
+        sendMock
+            .mockResolvedValueOnce({ Contents: [{ Key: 'prefix/a.txt' }, { Key: 'prefix/b.txt' }] })
+            .mockResolvedValue({});
+        const client = new StorageClient(config);
+
+        await client.clearPrefix('bucket-m', 'prefix/');
+
+        expect(sendMock.mock.calls[0][0]).toBeInstanceOf(ListObjectsCommand);
+        expect((sendMock.mock.calls[0][0] as { input: { Bucket: string; Prefix: string } }).input).toMatchObject({ Bucket: 'bucket-m', Prefix: 'prefix/' });
+    });
+
+    it('clearPrefix wraps list failures in StorageError', async () => {
+        sendMock.mockRejectedValueOnce(new Error('ListDenied'));
+        const client = new StorageClient(config);
+
+        await expect(client.clearPrefix('bucket-n', 'prefix/')).rejects.toBeInstanceOf(StorageError);
     });
 });

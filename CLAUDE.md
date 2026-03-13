@@ -22,7 +22,7 @@ npx jest src/__tests__/config.test.ts --runInBand
 This is a TypeScript npm library (`@ido_kawaz/storage-client`) that wraps the AWS S3 SDK for use in Kawaz Plus services.
 
 **Entry point:** `src/index.ts` re-exports three public APIs:
-- `StorageClient` — main class wrapping `S3Client` with `ensureBucket`, `deleteBucket`, `uploadObject`, `downloadObject`
+- `StorageClient` — main class wrapping `S3Client` with `ensureBucket`, `deleteBucket`, `clearPrefix`, `uploadObject`, `downloadObject`, `getPresignedUrl`, `deleteObject`
 - `createStorageConfig` — reads S3 config from environment variables (validated with Zod), returns a `StorageConfig`
 - `StorageError`, `UploadObjectOptions` — types
 

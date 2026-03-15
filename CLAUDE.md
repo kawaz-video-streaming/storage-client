@@ -22,17 +22,19 @@ npx jest src/__tests__/config.test.ts --runInBand
 This is a TypeScript npm library (`@ido_kawaz/storage-client`) that wraps the AWS S3 SDK for use in Kawaz Plus services.
 
 **Entry point:** `src/index.ts` re-exports three public APIs:
-- `StorageClient` — main class wrapping `S3Client` with `ensureBucket`, `deleteBucket`, `clearPrefix`, `uploadObject`, `downloadObject`, `getPresignedUrl`, `deleteObject`
+- `StorageClient` — main class wrapping `S3Client` with `ensureBucket`, `deleteBucket`, `clearPrefix`, `uploadObject`, `uploadObjects`, `downloadObject`, `getPresignedUrl`, `deleteObject`
 - `createStorageConfig` — reads S3 config from environment variables (validated with Zod), returns a `StorageConfig`
-- `StorageError`, `UploadObjectOptions` — types
+- `StorageError`, `StorageObject`, `UploadObjectOptions` — types
 
 **Config (`src/config.ts`):** `createStorageConfig()` parses these env vars via Zod:
 - `AWS_ENDPOINT` (required URL), `AWS_REGION` (default: `us-east-1`)
 - `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` (required)
-- `AWS_PART_SIZE` (default: 5MB), `AWS_MAX_CONCURRENCY` (default: 4)
+- `AWS_PART_SIZE` (default: 5MB), `AWS_MAX_CONCURRENCY` (default: 4), `AWS_BATCH_SIZE` (default: 10)
 
-**`uploadObject`** supports two modes via `UploadObjectOptions`:
+**`uploadObject(bucket, object, options?)`** takes a `StorageObject` (`{ key, data }`) and supports two modes:
 - Default: `PutObjectCommand` (single upload)
 - `multipartUpload: true`: uses `@aws-sdk/lib-storage` `Upload` with configurable part size and concurrency
+
+**`uploadObjects`** batches multiple `StorageObject` uploads using `runInBatches` (`src/utils/batches.ts`), parallelising within each batch up to `batchSize`.
 
 **Build output:** `dist/` (gitignored), published as the package's `main`/`types`.

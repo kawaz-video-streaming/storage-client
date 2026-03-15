@@ -4,6 +4,7 @@ import { z } from "zod";
 export interface StorageConfig extends S3ClientConfig {
     partSize: number; // Optional configuration for multipart upload part size
     maxConcurrency: number; // Optional configuration for maximum concurrency in multipart uploads
+    batchSize: number; // Optional configuration for batch operations
 }
 
 const StorageEnvSchema = z
@@ -14,6 +15,7 @@ const StorageEnvSchema = z
         AWS_SECRET_ACCESS_KEY: z.string(),
         AWS_PART_SIZE: z.coerce.number().finite().default(5 * 1024 * 1024),
         AWS_MAX_CONCURRENCY: z.coerce.number().finite().default(4),
+        AWS_BATCH_SIZE: z.coerce.number().finite().default(10),
     })
 
 export const createStorageConfig = (): StorageConfig => {
@@ -27,5 +29,6 @@ export const createStorageConfig = (): StorageConfig => {
         },
         partSize: value.AWS_PART_SIZE,
         maxConcurrency: value.AWS_MAX_CONCURRENCY,
+        batchSize: value.AWS_BATCH_SIZE
     };
 };

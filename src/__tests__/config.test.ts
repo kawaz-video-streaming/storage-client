@@ -40,7 +40,8 @@ describe('createStorageClientConfig', () => {
                 secretAccessKey: 'secret'
             },
             partSize: 10485760,
-            maxConcurrency: 8
+            maxConcurrency: 8,
+            batchSize: 10
         });
     });
 
@@ -57,6 +58,7 @@ describe('createStorageClientConfig', () => {
         expect(config.region).toBe('us-east-1');
         expect(config.partSize).toBe(5 * 1024 * 1024);
         expect(config.maxConcurrency).toBe(4);
+        expect(config.batchSize).toBe(10);
     });
 
     it('throws when required values are missing', () => {

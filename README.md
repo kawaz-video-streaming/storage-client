@@ -21,13 +21,13 @@ const client = new StorageClient({
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
   },
   partSize: 5 * 1024 * 1024,
-  maxConcurrency: 4
+  maxConcurrency: 4,
+  batchSize: 10
 });
 
 await client.uploadObject(
   'my-bucket',
-  'files/report.pdf',
-  fs.createReadStream('./report.pdf'),
+  { key: 'files/report.pdf', data: fs.createReadStream('./report.pdf') },
   { ensureBucket: true }
 );
 ```
@@ -46,6 +46,7 @@ Supported environment variables:
 - `AWS_SECRET_ACCESS_KEY` (required)
 - `AWS_PART_SIZE` (optional, default `5242880`)
 - `AWS_MAX_CONCURRENCY` (optional, default `4`)
+- `AWS_BATCH_SIZE` (optional, default `10`)
 
 ### `new StorageClient(config)`
 
@@ -55,6 +56,7 @@ Creates a new client.
 
 - `partSize: number` - multipart upload part size in bytes
 - `maxConcurrency: number` - number of parts uploaded in parallel
+- `batchSize: number` - number of objects processed in parallel per batch
 
 ### `ensureBucket(bucketName: string): Promise<void>`
 
@@ -64,15 +66,18 @@ Checks whether a bucket exists and creates it when it is missing.
 
 Deletes a bucket. If the bucket does not exist, the operation is treated as successful.
 
-### `uploadObject(bucketName: string, objectKey: string, objectData: Readable, options?: UploadObjectOptions): Promise<void>`
+### `uploadObject(bucketName: string, object: StorageObject, options?: UploadObjectOptions): Promise<void>`
 
-Uploads a stream to object storage.
+Uploads a single object to storage. `StorageObject` is `{ key: string; data: Readable }`.
 
-- `objectData` must be a Node.js `Readable` stream.
 - By default, uses a regular `PutObject` request.
 - When multipart upload is enabled, upload progress is logged to the console.
 - If `options?.ensureBucket` is `true`, the bucket is created automatically when missing.
 - If `options?.multipartUpload` is `true`, upload is performed using multipart upload.
+
+### `uploadObjects(bucketName: string, objects: StorageObject[], options?: UploadObjectOptions): Promise<void>`
+
+Uploads multiple objects in parallel batches (controlled by `batchSize`).
 
 `UploadObjectOptions`:
 
@@ -114,7 +119,7 @@ Storage operations can throw `StorageError` with operation context in the messag
 import { StorageError } from '@ido_kawaz/storage-client';
 
 try {
-  await client.uploadObject('my-bucket', 'files/a.txt', fs.createReadStream('./a.txt'));
+  await client.uploadObject('my-bucket', { key: 'files/a.txt', data: fs.createReadStream('./a.txt') });
 } catch (error) {
   if (error instanceof StorageError) {
     console.error(error.message);
@@ -125,9 +130,10 @@ try {
 ## Exports
 
 - `StorageClient`
-- `createStorageClientConfig`
-- `StorageClientConfig`
+- `createStorageConfig`
+- `StorageConfig`
 - `StorageError`
+- `StorageObject`
 - `UploadObjectOptions`
 
 ## Development

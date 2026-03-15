@@ -1,8 +1,15 @@
+import { Readable } from "stream";
+
 export class StorageError extends Error {
     constructor(operation: string, error: Error, details: {}) {
         const message = `Storage error: ${JSON.stringify({ operation, error: error.message, ...details })}`;
         super(message);
     }
+}
+
+export interface StorageObject {
+    key: string;
+    data: Readable;
 }
 
 export interface UploadObjectOptions {

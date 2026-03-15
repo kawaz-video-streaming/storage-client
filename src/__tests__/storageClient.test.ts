@@ -70,7 +70,8 @@ describe('StorageClient', () => {
     const config = {
         region: 'us-east-1',
         partSize: 5 * 1024 * 1024,
-        maxConcurrency: 4
+        maxConcurrency: 4,
+        batchSize: 10
     };
 
     beforeEach(() => {
@@ -132,7 +133,7 @@ describe('StorageClient', () => {
         const client = new StorageClient(config);
         const objectData = Readable.from(['hello']);
 
-        await client.uploadObject('bucket-a', 'path/file.txt', objectData);
+        await client.uploadObject('bucket-a', { key: 'path/file.txt', data: objectData });
 
         expect(sendMock).toHaveBeenCalledTimes(1);
         expect(sendMock.mock.calls[0][0]).toBeInstanceOf(PutObjectCommand);
@@ -144,7 +145,7 @@ describe('StorageClient', () => {
         const client = new StorageClient(config);
         const objectData = Readable.from(['hello']);
 
-        await client.uploadObject('bucket-a', 'path/file.txt', objectData, { multipartUpload: true });
+        await client.uploadObject('bucket-a', { key: 'path/file.txt', data: objectData }, { multipartUpload: true });
 
         expect(Upload).toHaveBeenCalledTimes(1);
         expect(Upload).toHaveBeenCalledWith(
@@ -166,7 +167,7 @@ describe('StorageClient', () => {
         const client = new StorageClient(config);
         const ensureBucketSpy = jest.spyOn(client, 'ensureBucket').mockResolvedValue();
 
-        await client.uploadObject('bucket-b', 'file.txt', Readable.from(['x']), { ensureBucket: true });
+        await client.uploadObject('bucket-b', { key: 'file.txt', data: Readable.from(['x']) }, { ensureBucket: true });
 
         expect(ensureBucketSpy).toHaveBeenCalledWith('bucket-b');
     });
@@ -175,7 +176,7 @@ describe('StorageClient', () => {
         uploadDoneMock.mockRejectedValueOnce(new Error('UploadDenied'));
         const client = new StorageClient(config);
 
-        await expect(client.uploadObject('bucket-c', 'file.txt', Readable.from(['x']), { multipartUpload: true })).rejects.toBeInstanceOf(StorageError);
+        await expect(client.uploadObject('bucket-c', { key: 'file.txt', data: Readable.from(['x']) }, { multipartUpload: true })).rejects.toBeInstanceOf(StorageError);
     });
 
     it('uploadObject includes operation and context in wrapped error message', async () => {
@@ -183,8 +184,8 @@ describe('StorageClient', () => {
         uploadDoneMock.mockRejectedValueOnce(error);
         const client = new StorageClient(config);
 
-        await expect(client.uploadObject('bucket-d', 'file.txt', Readable.from(['x']), { multipartUpload: true })).rejects.toThrow(
-            'Storage error: {"operation":"uploadObject","error":"unexpected","bucketName":"bucket-d","objectKey":"file.txt"}'
+        await expect(client.uploadObject('bucket-d', { key: 'file.txt', data: Readable.from(['x']) }, { multipartUpload: true })).rejects.toThrow(
+            'Storage error: {"operation":"uploadObject","error":"unexpected","Bucket":"bucket-d","Key":"file.txt"}'
         );
     });
 
@@ -212,7 +213,7 @@ describe('StorageClient', () => {
         const client = new StorageClient(config);
 
         await expect(client.downloadObject('bucket-g', 'empty.txt')).rejects.toThrow(
-            'Storage error: {"operation":"downloadObject","error":"Received empty body","bucketName":"bucket-g","objectKey":"empty.txt"}'
+            'Storage error: {"operation":"downloadObject","error":"Received empty body","Bucket":"bucket-g","Key":"empty.txt"}'
         );
     });
 

@@ -46,15 +46,16 @@ describe('createStorageClientConfig', () => {
     });
 
     it('uses defaults for optional values', () => {
-        process.env.AWS_ENDPOINT = 'http://localhost:9000';
         process.env.AWS_ACCESS_KEY_ID = 'key-id';
         process.env.AWS_SECRET_ACCESS_KEY = 'secret';
+        delete process.env.AWS_ENDPOINT;
         delete process.env.AWS_REGION;
         delete process.env.AWS_PART_SIZE;
         delete process.env.AWS_MAX_CONCURRENCY;
 
         const config = createStorageConfig();
 
+        expect(config.endpoint).toBeUndefined();
         expect(config.region).toBe('us-east-1');
         expect(config.partSize).toBe(5 * 1024 * 1024);
         expect(config.maxConcurrency).toBe(4);
@@ -68,10 +69,9 @@ describe('createStorageClientConfig', () => {
 
         const error = getThrownZodError();
 
-        expect(error.issues).toHaveLength(3);
+        expect(error.issues).toHaveLength(2);
         expect(error.issues).toEqual(
             expect.arrayContaining([
-                expect.objectContaining({ path: ['AWS_ENDPOINT'], code: 'invalid_type', expected: 'string', received: 'undefined', message: 'Required' }),
                 expect.objectContaining({ path: ['AWS_ACCESS_KEY_ID'], code: 'invalid_type', expected: 'string', received: 'undefined', message: 'Required' }),
                 expect.objectContaining({ path: ['AWS_SECRET_ACCESS_KEY'], code: 'invalid_type', expected: 'string', received: 'undefined', message: 'Required' }),
             ])

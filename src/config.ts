@@ -9,7 +9,7 @@ export interface StorageConfig extends S3ClientConfig {
 
 const StorageEnvSchema = z
     .object({
-        AWS_ENDPOINT: z.string().url(),
+        AWS_ENDPOINT: z.string().url().optional(),
         AWS_REGION: z.string().default("us-east-1"),
         AWS_ACCESS_KEY_ID: z.string(),
         AWS_SECRET_ACCESS_KEY: z.string(),

@@ -27,7 +27,7 @@ This is a TypeScript npm library (`@ido_kawaz/storage-client`) that wraps the AW
 - `StorageError`, `StorageObject`, `UploadObjectOptions` — types
 
 **Config (`src/config.ts`):** `createStorageConfig()` parses these env vars via Zod:
-- `AWS_ENDPOINT` (required URL), `AWS_REGION` (default: `us-east-1`)
+- `AWS_ENDPOINT` (optional URL), `AWS_REGION` (default: `us-east-1`)
 - `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` (required)
 - `AWS_PART_SIZE` (default: 5MB), `AWS_MAX_CONCURRENCY` (default: 4), `AWS_BATCH_SIZE` (default: 10)
 

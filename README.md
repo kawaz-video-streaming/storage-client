@@ -34,13 +34,13 @@ await client.uploadObject(
 
 ## API
 
-### `createStorageClientConfig(): StorageClientConfig`
+### `createStorageConfig(): StorageConfig`
 
-Builds a validated `StorageClientConfig` from environment variables using Zod.
+Builds a validated `StorageConfig` from environment variables using Zod.
 
 Supported environment variables:
 
-- `AWS_ENDPOINT` (required) - S3 endpoint URL
+- `AWS_ENDPOINT` (optional) - S3 endpoint URL
 - `AWS_REGION` (optional, default `us-east-1`)
 - `AWS_ACCESS_KEY_ID` (required)
 - `AWS_SECRET_ACCESS_KEY` (required)
@@ -52,7 +52,7 @@ Supported environment variables:
 
 Creates a new client.
 
-`StorageClientConfig` extends AWS `S3ClientConfig` and includes:
+`StorageConfig` extends AWS `S3ClientConfig` and includes:
 
 - `partSize: number` - multipart upload part size in bytes
 - `maxConcurrency: number` - number of parts uploaded in parallel

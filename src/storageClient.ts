@@ -106,9 +106,17 @@ export class StorageClient {
             });
 
     getPresignedUrl = (Bucket: string, Key: string, expiresInSeconds: number): Promise<string> =>
-        getSignedUrl(this.client, new GetObjectCommand({ Bucket, Key }), { expiresIn: expiresInSeconds }).catch((error) => {
-            throw new StorageError("getPresignedUrl", error, { Bucket, Key, expiresInSeconds });
-        });
+        getSignedUrl(this.client, new GetObjectCommand({ Bucket, Key }), { expiresIn: expiresInSeconds })
+            .then((url) => {
+                const { endpoint, publicEndpoint } = this.config;
+                if (isNotNil(publicEndpoint) && typeof endpoint === 'string') {
+                    return url.replace(endpoint, publicEndpoint);
+                }
+                return url;
+            })
+            .catch((error) => {
+                throw new StorageError("getPresignedUrl", error, { Bucket, Key, expiresInSeconds });
+            });
 
 
     deleteObject = (Bucket: string, Key: string) =>

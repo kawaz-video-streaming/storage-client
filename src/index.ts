@@ -1,3 +1,3 @@
 export { StorageClient } from './storageClient';
-export { createStorageConfig, StorageConfig } from './config';
-export { StorageError, StorageObject, UploadObjectOptions } from './types';
+export { createStorageConfig, type StorageConfig } from './config';
+export { StorageError, type StorageObject, type UploadObjectOptions } from './types';

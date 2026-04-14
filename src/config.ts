@@ -1,15 +1,18 @@
 import { S3ClientConfig } from "@aws-sdk/client-s3";
+import { isNotNil } from "ramda";
 import { z } from "zod";
 
 export interface StorageConfig extends S3ClientConfig {
     partSize: number; // Optional configuration for multipart upload part size
     maxConcurrency: number; // Optional configuration for maximum concurrency in multipart uploads
     batchSize: number; // Optional configuration for batch operations
+    publicEndpoint?: string; // Public-facing endpoint for presigned URLs (browser-accessible)
 }
 
 const StorageEnvSchema = z
     .object({
         AWS_ENDPOINT: z.string().url().optional(),
+        AWS_PUBLIC_ENDPOINT: z.string().url().optional(),
         AWS_REGION: z.string().default("us-east-1"),
         AWS_ACCESS_KEY_ID: z.string(),
         AWS_SECRET_ACCESS_KEY: z.string(),
@@ -22,7 +25,9 @@ export const createStorageConfig = (): StorageConfig => {
     const value = StorageEnvSchema.parse(process.env);
     return {
         endpoint: value.AWS_ENDPOINT,
+        publicEndpoint: value.AWS_PUBLIC_ENDPOINT ?? value.AWS_ENDPOINT,
         region: value.AWS_REGION,
+        forcePathStyle: isNotNil(value.AWS_ENDPOINT),
         credentials: {
             accessKeyId: value.AWS_ACCESS_KEY_ID,
             secretAccessKey: value.AWS_SECRET_ACCESS_KEY,

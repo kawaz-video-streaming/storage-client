@@ -39,9 +39,11 @@ describe('createStorageClientConfig', () => {
                 accessKeyId: 'key-id',
                 secretAccessKey: 'secret'
             },
+            forcePathStyle: true,
             partSize: 10485760,
             maxConcurrency: 8,
-            batchSize: 10
+            batchSize: 10,
+            publicEndpoint: 'http://localhost:9000'
         });
     });
 

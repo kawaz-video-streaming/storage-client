@@ -16,3 +16,5 @@ export interface UploadObjectOptions {
     ensureBucket?: boolean;
     multipartUpload?: boolean; // Optional flag to indicate if multipart upload should be used
 }
+
+export type OnProgressCallback = (index: number, total: number) => void;

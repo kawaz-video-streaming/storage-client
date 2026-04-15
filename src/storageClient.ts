@@ -4,20 +4,24 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { isEmpty, isNil, isNotNil, pluck } from "ramda";
 import { Readable } from "stream";
 import { StorageConfig } from "./config";
-import { StorageError, StorageObject, UploadObjectOptions } from "./types";
+import { OnProgressCallback, StorageError, StorageObject, UploadObjectOptions } from "./types";
 import { runInBatches } from "./utils/batches";
 
 export class StorageClient {
     private client: S3Client;
+    private signingClient: S3Client;
 
     constructor(private readonly config: StorageConfig) {
         this.client = new S3Client(config);
+        this.signingClient = isNotNil(config.publicEndpoint)
+            ? new S3Client({ ...config, endpoint: config.publicEndpoint })
+            : this.client;
     }
 
-    private clearObjects = async (bucketName: string, objectKeys: string[]) => {
+    private clearObjects = async (bucketName: string, objectKeys: string[], onProgress?: OnProgressCallback) => {
         const clearObjectOperation = (key: string) => this.deleteObject(bucketName, key);
-        const clearProgressLog = (index: number, total: number) => `cleared ${index / total * 100}% of prefix files (${index}/${total} batches)`;
-        await runInBatches(objectKeys, this.config.batchSize, clearObjectOperation, clearProgressLog);
+        const clearProgressLog = (index: number, total: number) => console.log(`cleared ${index / total * 100}% of prefix files (${index}/${total} batches)`);
+        await runInBatches(objectKeys, this.config.batchSize, clearObjectOperation, onProgress ?? clearProgressLog);
     }
 
     ensureBucket = (bucketName: string) =>
@@ -31,21 +35,21 @@ export class StorageClient {
                 }
             });
 
-    deleteBucket = async (bucketName: string) =>
+    deleteBucket = async (bucketName: string, onProgress?: OnProgressCallback) =>
         this.client
             .send(new DeleteBucketCommand({ Bucket: bucketName }))
             .catch(async (error) => {
                 if (error.name === 'NoSuchBucket') {
                     return;
                 } else if (error.name === 'BucketNotEmpty') {
-                    await this.clearPrefix(bucketName, "");
+                    await this.clearPrefix(bucketName, "", onProgress);
                     await this.client.send(new DeleteBucketCommand({ Bucket: bucketName }));
                 } else {
                     throw new StorageError("deleteBucket", error as Error, { bucketName });
                 }
             });
 
-    clearPrefix = (Bucket: string, Prefix: string) =>
+    clearPrefix = (Bucket: string, Prefix: string, onProgress?: OnProgressCallback) =>
         this.client
             .send(new ListObjectsCommand({ Bucket, Prefix: Prefix }))
             .then(async ({ Contents: listedObjects }) => {
@@ -53,22 +57,22 @@ export class StorageClient {
                     return;
                 } else {
                     const objectKeys = pluck('Key', listedObjects).filter(isNotNil);
-                    await this.clearObjects(Bucket, objectKeys);
+                    await this.clearObjects(Bucket, objectKeys, onProgress);
                 }
             })
             .catch((error) => {
                 throw new StorageError("clearPrefix", error as Error, { Bucket, prefix: Prefix });
             });
 
-    uploadObjects = async (Bucket: string, objects: StorageObject[], options?: UploadObjectOptions) =>
+    uploadObjects = async (Bucket: string, objects: StorageObject[], options?: UploadObjectOptions, onOperationProgress?: OnProgressCallback, onObjectProgress?: OnProgressCallback) =>
         runInBatches(
             objects,
             this.config.batchSize,
-            (object) => this.uploadObject(Bucket, object, options),
-            (index, total) => `Uploaded ${index / total * 100}% of files (${index}/${total} batches)`
+            (object) => this.uploadObject(Bucket, object, options, onObjectProgress),
+            onOperationProgress ?? ((index, total) => console.log(`Uploaded ${index / total * 100}% of files (${index}/${total} batches)`))
         );
 
-    uploadObject = async (Bucket: string, object: StorageObject, options?: UploadObjectOptions) => {
+    uploadObject = async (Bucket: string, object: StorageObject, options?: UploadObjectOptions, onProgress?: OnProgressCallback) => {
         const { key: Key, data: Body } = object;
         if (options?.ensureBucket) {
             await this.ensureBucket(Bucket);
@@ -82,7 +86,13 @@ export class StorageClient {
                     partSize: this.config.partSize
                 })
                 upload.on("httpUploadProgress", (progress) => {
-                    console.log(`Upload progress for ${Key}: ${progress.loaded! / progress.total! * 100}%`);
+                    if (isNotNil(progress.loaded) && isNotNil(progress.total)) {
+                        if (isNotNil(onProgress)) {
+                            onProgress(progress.loaded, progress.total);
+                        } else {
+                            console.log(`Upload progress for ${Key}: ${progress.loaded / progress.total * 100}%`);
+                        }
+                    }
                 });
                 await upload.done();
             } else {
@@ -106,14 +116,7 @@ export class StorageClient {
             });
 
     getPresignedUrl = (Bucket: string, Key: string, expiresInSeconds: number): Promise<string> =>
-        getSignedUrl(this.client, new GetObjectCommand({ Bucket, Key }), { expiresIn: expiresInSeconds })
-            .then((url) => {
-                const { endpoint, publicEndpoint } = this.config;
-                if (isNotNil(publicEndpoint) && typeof endpoint === 'string') {
-                    return url.replace(endpoint, publicEndpoint);
-                }
-                return url;
-            })
+        getSignedUrl(this.signingClient, new GetObjectCommand({ Bucket, Key }), { expiresIn: expiresInSeconds })
             .catch((error) => {
                 throw new StorageError("getPresignedUrl", error, { Bucket, Key, expiresInSeconds });
             });

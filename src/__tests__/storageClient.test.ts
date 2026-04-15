@@ -286,4 +286,60 @@ describe('StorageClient', () => {
 
         await expect(client.clearPrefix('bucket-n', 'prefix/')).rejects.toBeInstanceOf(StorageError);
     });
+
+    it('clearPrefix calls onProgress callback when deleting objects', async () => {
+        sendMock
+            .mockResolvedValueOnce({ Contents: [{ Key: 'prefix/a.txt' }, { Key: 'prefix/b.txt' }] })
+            .mockResolvedValue({});
+        const client = new StorageClient(config);
+        const onProgress = jest.fn();
+
+        await client.clearPrefix('bucket-o', 'prefix/', onProgress);
+
+        expect(onProgress).toHaveBeenCalled();
+        expect(onProgress).toHaveBeenCalledWith(expect.any(Number), expect.any(Number));
+    });
+
+    it('uploadObject calls onProgress during multipart upload', async () => {
+        const onProgress = jest.fn();
+        uploadOnMock.mockImplementation((_event, handler) => {
+            handler({ loaded: 512, total: 1024 });
+        });
+        uploadDoneMock.mockResolvedValueOnce();
+        const client = new StorageClient(config);
+
+        await client.uploadObject('bucket-p', { key: 'file.txt', data: Readable.from(['x']) }, { multipartUpload: true }, onProgress);
+
+        expect(onProgress).toHaveBeenCalledWith(512, 1024);
+    });
+
+    it('uploadObjects calls onOperationProgress callback', async () => {
+        sendMock.mockResolvedValue({});
+        const client = new StorageClient(config);
+        const onOperationProgress = jest.fn();
+        const objects = [{ key: 'a.txt', data: Readable.from(['a']) }];
+
+        await client.uploadObjects('bucket-q', objects, undefined, onOperationProgress);
+
+        expect(onOperationProgress).toHaveBeenCalled();
+    });
+
+    it('constructs a separate signingClient when publicEndpoint is set', () => {
+        const S3ClientMock = jest.requireMock('@aws-sdk/client-s3').S3Client;
+        S3ClientMock.mockClear();
+
+        new StorageClient({ ...config, publicEndpoint: 'https://cdn.example.com' });
+
+        expect(S3ClientMock).toHaveBeenCalledTimes(2);
+        expect(S3ClientMock.mock.calls[1][0]).toMatchObject({ endpoint: 'https://cdn.example.com' });
+    });
+
+    it('reuses client as signingClient when publicEndpoint is not set', () => {
+        const S3ClientMock = jest.requireMock('@aws-sdk/client-s3').S3Client;
+        S3ClientMock.mockClear();
+
+        new StorageClient(config);
+
+        expect(S3ClientMock).toHaveBeenCalledTimes(1);
+    });
 });

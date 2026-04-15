@@ -41,6 +41,7 @@ Builds a validated `StorageConfig` from environment variables using Zod.
 Supported environment variables:
 
 - `AWS_ENDPOINT` (optional) - S3 endpoint URL
+- `AWS_PUBLIC_ENDPOINT` (optional) - public-facing endpoint used for presigned URLs (e.g. a CDN or browser-accessible host); falls back to `AWS_ENDPOINT`
 - `AWS_REGION` (optional, default `us-east-1`)
 - `AWS_ACCESS_KEY_ID` (required)
 - `AWS_SECRET_ACCESS_KEY` (required)
@@ -57,27 +58,27 @@ Creates a new client.
 - `partSize: number` - multipart upload part size in bytes
 - `maxConcurrency: number` - number of parts uploaded in parallel
 - `batchSize: number` - number of objects processed in parallel per batch
+- `publicEndpoint?: string` - public-facing endpoint for presigned URL signing (e.g. a CDN URL)
 
 ### `ensureBucket(bucketName: string): Promise<void>`
 
 Checks whether a bucket exists and creates it when it is missing.
 
-### `deleteBucket(bucketName: string): Promise<void>`
+### `deleteBucket(bucketName: string, onProgress?: OnProgressCallback): Promise<void>`
 
-Deletes a bucket. If the bucket does not exist, the operation is treated as successful.
+Deletes a bucket. If the bucket does not exist, the operation is treated as successful. When the bucket is non-empty, clears all objects first — `onProgress` receives `(completedBatches, totalBatches)` during that clearing phase.
 
-### `uploadObject(bucketName: string, object: StorageObject, options?: UploadObjectOptions): Promise<void>`
+### `uploadObject(bucketName: string, object: StorageObject, options?: UploadObjectOptions, onProgress?: OnProgressCallback): Promise<void>`
 
 Uploads a single object to storage. `StorageObject` is `{ key: string; data: Readable }`.
 
 - By default, uses a regular `PutObject` request.
-- When multipart upload is enabled, upload progress is logged to the console.
 - If `options?.ensureBucket` is `true`, the bucket is created automatically when missing.
-- If `options?.multipartUpload` is `true`, upload is performed using multipart upload.
+- If `options?.multipartUpload` is `true`, upload is performed using multipart upload. `onProgress` receives `(bytesLoaded, totalBytes)` as each part is sent.
 
-### `uploadObjects(bucketName: string, objects: StorageObject[], options?: UploadObjectOptions): Promise<void>`
+### `uploadObjects(bucketName: string, objects: StorageObject[], options?: UploadObjectOptions, onOperationProgress?: OnProgressCallback, onObjectProgress?: OnProgressCallback): Promise<void>`
 
-Uploads multiple objects in parallel batches (controlled by `batchSize`).
+Uploads multiple objects in parallel batches (controlled by `batchSize`). `onOperationProgress` receives `(completedBatches, totalBatches)`; `onObjectProgress` is forwarded to each individual `uploadObject` call.
 
 `UploadObjectOptions`:
 
@@ -104,9 +105,9 @@ Deletes a single object from a bucket.
 
 - Throws `StorageError` on failure.
 
-### `clearPrefix(bucketName: string, prefix: string): Promise<void>`
+### `clearPrefix(bucketName: string, prefix: string, onProgress?: OnProgressCallback): Promise<void>`
 
-Deletes all objects whose key starts with the given prefix.
+Deletes all objects whose key starts with the given prefix. `onProgress` receives `(completedBatches, totalBatches)`.
 
 - No-ops when the prefix matches no objects.
 - Throws `StorageError` if listing objects fails.
@@ -135,6 +136,7 @@ try {
 - `StorageError`
 - `StorageObject`
 - `UploadObjectOptions`
+- `OnProgressCallback`
 
 ## Development
 

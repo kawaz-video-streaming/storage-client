@@ -18,7 +18,7 @@ export const runInBatches = async <T, R>(
     for (let i = 0; i < count; i++) {
         results = results.concat(await Promise.all(batches[i].map(handler)));
         if (i % progressInterval === 0 || i === count - 1) {
-            onProgress(i + 1, count);
+            await onProgress(i + 1, count);
         }
     }
     return results;

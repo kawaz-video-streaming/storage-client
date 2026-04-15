@@ -17,4 +17,4 @@ export interface UploadObjectOptions {
     multipartUpload?: boolean; // Optional flag to indicate if multipart upload should be used
 }
 
-export type OnProgressCallback = (index: number, total: number) => void;
+export type OnProgressCallback = (index: number, total: number) => void | Promise<void>;

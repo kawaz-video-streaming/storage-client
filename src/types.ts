@@ -9,7 +9,7 @@ export class StorageError extends Error {
 
 export interface StorageObject {
     key: string;
-    data: Readable;
+    data: Readable | (() => Readable);
 }
 
 export interface UploadObjectOptions {

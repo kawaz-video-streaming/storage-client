@@ -70,11 +70,12 @@ Deletes a bucket. If the bucket does not exist, the operation is treated as succ
 
 ### `uploadObject(bucketName: string, object: StorageObject, options?: UploadObjectOptions, onProgress?: OnProgressCallback): Promise<void>`
 
-Uploads a single object to storage. `StorageObject` is `{ key: string; data: Readable }`.
+Uploads a single object to storage. `StorageObject` is `{ key: string; data: Readable | (() => Readable) }`.
 
 - By default, uses a regular `PutObject` request.
 - If `options?.ensureBucket` is `true`, the bucket is created automatically when missing.
 - If `options?.multipartUpload` is `true`, upload is performed using multipart upload. `onProgress` receives `(bytesLoaded, totalBytes)` as each part is sent.
+- When `data` is a factory function `() => Readable`, the stream is created fresh on each attempt, enabling automatic retry (up to 3 attempts) on transient network errors. When `data` is a plain `Readable`, no retry is attempted.
 
 ### `uploadObjects(bucketName: string, objects: StorageObject[], options?: UploadObjectOptions, onOperationProgress?: OnProgressCallback, onObjectProgress?: OnProgressCallback): Promise<void>`
 

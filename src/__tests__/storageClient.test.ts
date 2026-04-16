@@ -313,6 +313,53 @@ describe('StorageClient', () => {
         expect(onProgress).toHaveBeenCalledWith(512, 1024);
     });
 
+    it('uploadObject accepts a stream factory and calls it on upload', async () => {
+        sendMock.mockResolvedValueOnce({});
+        const client = new StorageClient(config);
+        const stream = Readable.from(['hello']);
+        const factory = jest.fn(() => stream);
+
+        await client.uploadObject('bucket-a', { key: 'path/file.txt', data: factory });
+
+        expect(factory).toHaveBeenCalledTimes(1);
+        expect(sendMock).toHaveBeenCalledTimes(1);
+        expect(sendMock.mock.calls[0][0]).toBeInstanceOf(PutObjectCommand);
+    });
+
+    it('uploadObject retries up to 3 times with a fresh stream from factory on each attempt', async () => {
+        sendMock
+            .mockRejectedValueOnce(new Error('NetworkError'))
+            .mockRejectedValueOnce(new Error('NetworkError'))
+            .mockResolvedValueOnce({});
+        const client = new StorageClient(config);
+        const factory = jest.fn(() => Readable.from(['hello']));
+
+        await client.uploadObject('bucket-a', { key: 'path/file.txt', data: factory });
+
+        expect(factory).toHaveBeenCalledTimes(3);
+        expect(sendMock).toHaveBeenCalledTimes(3);
+    });
+
+    it('uploadObject stops retrying and throws StorageError after all factory attempts fail', async () => {
+        sendMock.mockRejectedValue(new Error('NetworkError'));
+        const client = new StorageClient(config);
+        const factory = jest.fn(() => Readable.from(['hello']));
+
+        await expect(client.uploadObject('bucket-a', { key: 'path/file.txt', data: factory })).rejects.toBeInstanceOf(StorageError);
+
+        expect(factory).toHaveBeenCalledTimes(3);
+        expect(sendMock).toHaveBeenCalledTimes(3);
+    });
+
+    it('uploadObject does not retry when data is a plain Readable', async () => {
+        sendMock.mockRejectedValueOnce(new Error('NetworkError'));
+        const client = new StorageClient(config);
+
+        await expect(client.uploadObject('bucket-a', { key: 'path/file.txt', data: Readable.from(['hello']) })).rejects.toBeInstanceOf(StorageError);
+
+        expect(sendMock).toHaveBeenCalledTimes(1);
+    });
+
     it('uploadObjects calls onOperationProgress callback', async () => {
         sendMock.mockResolvedValue({});
         const client = new StorageClient(config);

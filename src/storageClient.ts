@@ -73,12 +73,13 @@ export class StorageClient {
         );
 
     uploadObject = async (Bucket: string, object: StorageObject, options?: UploadObjectOptions, onProgress?: OnProgressCallback) => {
-        const { key: Key, data: Body } = object;
+        const { key: Key, data } = object;
         if (options?.ensureBucket) {
             await this.ensureBucket(Bucket);
         }
         try {
             if (options?.multipartUpload) {
+                const Body = typeof data === 'function' ? data() : data;
                 const upload = new Upload({
                     client: this.client,
                     params: { Bucket, Key, Body },
@@ -96,7 +97,18 @@ export class StorageClient {
                 });
                 await upload.done();
             } else {
-                await this.client.send(new PutObjectCommand({ Bucket, Key, Body }));
+                const maxAttempts = typeof data === 'function' ? 3 : 1;
+                let lastError: Error | undefined;
+                for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                    const Body = typeof data === 'function' ? data() : data;
+                    try {
+                        await this.client.send(new PutObjectCommand({ Bucket, Key, Body }));
+                        return;
+                    } catch (err) {
+                        lastError = err as Error;
+                    }
+                }
+                throw lastError!;
             }
         } catch (error) {
             throw new StorageError("uploadObject", error as Error, { Bucket, Key });

@@ -40,6 +40,7 @@ describe('createStorageClientConfig', () => {
                 secretAccessKey: 'secret'
             },
             forcePathStyle: true,
+            requestChecksumCalculation: 'WHEN_REQUIRED',
             partSize: 10485760,
             maxConcurrency: 8,
             batchSize: 10,

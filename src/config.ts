@@ -32,6 +32,7 @@ export const createStorageConfig = (): StorageConfig => {
             accessKeyId: value.AWS_ACCESS_KEY_ID,
             secretAccessKey: value.AWS_SECRET_ACCESS_KEY,
         },
+        requestChecksumCalculation: 'WHEN_REQUIRED',
         partSize: value.AWS_PART_SIZE,
         maxConcurrency: value.AWS_MAX_CONCURRENCY,
         batchSize: value.AWS_BATCH_SIZE

@@ -240,6 +240,29 @@ describe('StorageClient', () => {
         await expect(client.getPresignedUrl('bucket-i', 'file.txt', 3600)).rejects.toBeInstanceOf(StorageError);
     });
 
+    it('getPutPresignedUrl returns signed URL from presigner', async () => {
+        const signedUrl = 'https://s3.example.com/bucket/file.txt?X-Amz-Signature=abc';
+        getSignedUrlMock.mockResolvedValueOnce(signedUrl);
+        const client = new StorageClient(config);
+
+        const result = await client.getPutPresignedUrl('bucket-h', 'file.txt', 3600);
+
+        expect(result).toBe(signedUrl);
+        expect(getSignedUrlMock).toHaveBeenCalledTimes(1);
+        expect(getSignedUrlMock).toHaveBeenCalledWith(
+            expect.anything(),
+            expect.any(PutObjectCommand),
+            { expiresIn: 3600 }
+        );
+    });
+
+    it('getPutPresignedUrl wraps presigner failures in StorageError', async () => {
+        getSignedUrlMock.mockRejectedValueOnce(new Error('SigningError'));
+        const client = new StorageClient(config);
+
+        await expect(client.getPutPresignedUrl('bucket-i', 'file.txt', 3600)).rejects.toBeInstanceOf(StorageError);
+    });
+
     it('deleteObject sends DeleteObjectCommand', async () => {
         sendMock.mockResolvedValueOnce({});
         const client = new StorageClient(config);

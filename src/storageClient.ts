@@ -133,6 +133,12 @@ export class StorageClient {
                 throw new StorageError("getPresignedUrl", error, { Bucket, Key, expiresInSeconds });
             });
 
+    getPutPresignedUrl = (Bucket: string, Key: string, expiresInSeconds: number): Promise<string> =>
+        getSignedUrl(this.signingClient, new PutObjectCommand({ Bucket, Key }), { expiresIn: expiresInSeconds })
+            .catch((error) => {
+                throw new StorageError("getPutPresignedUrl", error, { Bucket, Key, expiresInSeconds });
+            });
+
 
     deleteObject = (Bucket: string, Key: string) =>
         this.client
